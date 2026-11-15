@@ -1,6 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
 /node_modules
 /.pnp
 .pnp.*
@@ -9,33 +11,102 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+bower_components/
+jspm_packages/
 
-# testing
-/coverage
-
-# next.js
+# ---------------------------------------------------------------------------
+# Next.js / build output
+# ---------------------------------------------------------------------------
 /.next/
 /out/
-
-# production
 /build
+/dist
+.turbo/
+.swc/
+next-env.d.ts
 
-# misc
-.DS_Store
-*.pem
+# TypeScript incremental build info
+*.tsbuildinfo
 
-# debug
+# ---------------------------------------------------------------------------
+# Testing & coverage
+# ---------------------------------------------------------------------------
+/coverage
+.nyc_output/
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# ---------------------------------------------------------------------------
+# Environment variables (never commit secrets)
+# Keep an example file if you add one: .env.example
+# ---------------------------------------------------------------------------
+.env*
+!.env.example
+
+# ---------------------------------------------------------------------------
+# Deployment
+# ---------------------------------------------------------------------------
+.vercel
+.netlify
+
+# ---------------------------------------------------------------------------
+# Logs & debug output
+# ---------------------------------------------------------------------------
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 .pnpm-debug.log*
+lerna-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ---------------------------------------------------------------------------
+# Caches
+# ---------------------------------------------------------------------------
+.eslintcache
+.stylelintcache
+.cache/
+.parcel-cache/
+*.tmp
+*.temp
 
-# vercel
-.vercel
+# ---------------------------------------------------------------------------
+# Certificates & keys
+# ---------------------------------------------------------------------------
+*.pem
+*.key
+*.crt
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# ---------------------------------------------------------------------------
+# Exported plans (PDFs downloaded while testing the app)
+# ---------------------------------------------------------------------------
+floor-plan*.pdf
+
+# ---------------------------------------------------------------------------
+# Editors & IDEs
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Local AI-assistant / tool settings
+.claude/
+
+# ---------------------------------------------------------------------------
+# Operating system files
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini

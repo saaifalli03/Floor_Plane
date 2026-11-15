@@ -1,0 +1,206 @@
+{
+  "app": {
+    "title": "Floor Plan Studio",
+    "subtitle": "Set your plot size, add rooms, drag them into place, export to PDF.",
+    "meta_description": "Drag-and-drop floor plan generator with PDF export."
+  },
+  "room_type": "Room type",
+  "room_name": "Room name",
+  "room_name_placeholder": "e.g. Study, Laundry",
+  "width": "Width",
+  "length": "Length",
+  "unit_ft": "ft",
+  "unit_in": "in",
+  "feet_inches_value": "{{feet}}' {{inches}}\"",
+  "feet_only_value": "{{feet}}'",
+  "inches_only_value": "{{inches}}\"",
+  "dimensions_value": "{{width}} × {{length}}",
+  "area_value": "{{area}} sq ft",
+  "room_types": {
+    "bedroom": "Bedroom",
+    "kitchen": "Kitchen",
+    "living_area": "Living Area",
+    "tv_lounge": "TV Lounge",
+    "stairs": "Stairs",
+    "garage": "Garage",
+    "garden": "Garden",
+    "bathroom": "Bathroom",
+    "dining": "Dining",
+    "hallway": "Hallway",
+    "vent_shaft": "Ventilation shaft",
+    "custom": "Custom"
+  },
+  "sidebar": {
+    "plot_title": "Plot size",
+    "plot_hint": "The canvas is drawn to this size. Rooms must fit inside it.",
+    "create_title": "Add a room",
+    "rooms_title": "Rooms ({{count}})",
+    "empty_rooms": "No rooms yet. Add one above to get started.",
+    "total_area": "Total: {{area}} sq ft",
+    "templates_title": "House templates",
+    "templates_hint": "Start from a ready-made layout that stretches to fit your plot."
+  },
+  "actions": {
+    "add_room": "Add room",
+    "apply_plot": "Apply plot size",
+    "export_pdf": "Done — Export PDF",
+    "exporting": "Exporting…",
+    "clear_all": "Clear all",
+    "delete": "Delete",
+    "rotate": "Rotate 90°",
+    "confirm_clear": "Remove every room from the plan?",
+    "yes": "Yes",
+    "no": "No",
+    "browse_templates": "Browse templates",
+    "use_template": "Use this template",
+    "cancel": "Cancel",
+    "replace": "Replace",
+    "add_door": "Add door",
+    "auto_doors": "Auto-place doors",
+    "remove_door": "Remove door",
+    "add_window": "Add window",
+    "remove_window": "Remove window",
+    "auto_place": "Auto-place",
+    "auto_both": "Doors, windows and vents",
+    "auto_doors_only": "Doors only",
+    "auto_windows_only": "Windows only",
+    "resize_room": "Drag to resize room",
+    "resize_plot": "Drag to resize the plot",
+    "add_on_wall": "Add a door, window or vent on this wall",
+    "add_door_here": "Add door here",
+    "add_window_here": "Add window here",
+    "remove_item": "Remove",
+    "save_changes": "Save changes",
+    "add_vent": "Add vent",
+    "add_vent_here": "Add vent here",
+    "remove_vent": "Remove vent",
+    "auto_vents_only": "Vents only"
+  },
+  "canvas": {
+    "empty_title": "Your canvas is empty",
+    "empty_hint": "Use the panel on the left to add rooms. Drag them to arrange your plan.",
+    "scale_hint": "Grid: 1 square = {{size}} · Snap: {{snap}} or nearest wall",
+    "plan_size": "Plot: {{width}} × {{length}} · {{area}} sq ft",
+    "resize_badge": "{{width}} × {{length}}"
+  },
+  "validation": {
+    "required": "This field is required",
+    "min_dimension": "Must be at least {{min}}",
+    "max_dimension": "Must be at most {{max}}"
+  },
+  "messages": {
+    "room_added": "{{name}} added to the plan",
+    "no_space": "No free space left for a room of that size",
+    "collision": "Rooms can't overlap — move reverted",
+    "rotate_blocked": "Not enough space to rotate this room",
+    "plot_updated": "Plot resized to {{width}} × {{length}}",
+    "plot_too_small": "Some rooms would fall outside that plot. Move them first or pick a bigger size.",
+    "export_success": "PDF downloaded",
+    "export_error": "Couldn't export the PDF. Please try again.",
+    "export_empty": "Add at least one room before exporting",
+    "template_applied": "{{name}} template loaded",
+    "template_too_small": "Your plot is too small for this template",
+    "doors_placed": "{{count}} doors placed",
+    "no_doors_placed": "No walls long enough for doors were found",
+    "confirm_auto_doors": "Replace all existing doors with automatically placed ones?",
+    "rooms_swapped": "Swapped {{a}} and {{b}}",
+    "swap_blocked": "{{a}} and {{b}} can't swap — one doesn't fit in the other's spot",
+    "windows_placed": "{{count}} windows placed",
+    "no_windows_placed": "No free outside walls found for windows",
+    "openings_placed": "{{doors}} doors, {{windows}} windows and {{vents}} vents placed",
+    "confirm_auto_windows": "Replace all existing windows with automatically placed ones?",
+    "confirm_auto_both": "Replace all existing doors, windows and vents with automatically placed ones?",
+    "room_updated": "{{name}} updated",
+    "room_update_blocked": "That size doesn't fit here — it would overlap another room or leave the plot",
+    "plot_resized": "Plot resized to {{width}} × {{length}}",
+    "vents_placed": "{{count}} vents placed",
+    "no_vents_placed": "No outside walls free for vents (bathrooms, kitchens and garages get them)",
+    "confirm_auto_vents": "Replace all existing vents with automatically placed ones?"
+  },
+  "pdf": {
+    "title": "Floor Plan",
+    "subtitle": "Plot {{width}} × {{length}} · Generated on {{date}}",
+    "file_name": "floor-plan"
+  },
+  "templates": {
+    "modal_title": "House templates for a {{width}} × {{length}} plot",
+    "rooms_count": "{{count}} rooms",
+    "min_plot": "Needs at least {{width}} × {{length}}",
+    "fits": "Fits your plot",
+    "rotated": "Rotated to suit your plot",
+    "replace_title": "Replace current layout?",
+    "replace_body": "This removes the {{count}} rooms on the canvas and loads the template.",
+    "items": {
+      "compact_2bed": {
+        "name": "Compact 2-bedroom",
+        "description": "Open living room and kitchen up front, two bedrooms at the back."
+      },
+      "family_3bed": {
+        "name": "Family 3-bedroom",
+        "description": "Garage, living and dining zone, with a hallway leading to three bedrooms."
+      },
+      "garden_home": {
+        "name": "Garden home",
+        "description": "Front garden, open living, kitchen and TV lounge, two bedrooms and stairs."
+      },
+      "villa_4bed": {
+        "name": "4-bedroom villa",
+        "description": "Large home with garage, TV lounge, central hallway, four bedrooms and two baths."
+      }
+    }
+  },
+  "walls": {
+    "top": "Top",
+    "right": "Right",
+    "bottom": "Bottom",
+    "left": "Left"
+  },
+  "doors": {
+    "title": "Doors",
+    "title_room": "Doors — {{room}}",
+    "select_hint": "Select a room on the canvas to add or edit its doors, windows and vents.",
+    "empty": "No doors on this room yet.",
+    "door_n": "Door {{n}}",
+    "wall": "Wall",
+    "position": "Distance from wall start",
+    "width": "Door width",
+    "flip": "Flip hinge",
+    "drag_hint": "Tip: drag a door, window or vent on the canvas to slide it along a wall or move it to another wall.",
+    "drag_label": "Drag to move door",
+    "kind": "Type",
+    "kinds": {
+      "swing": "Hinged door",
+      "opening": "Open doorway",
+      "overhead": "Roll-up (garage) door"
+    },
+    "panel_title": "Doors, windows & vents",
+    "panel_title_room": "Doors, windows & vents — {{room}}"
+  },
+  "stairs": {
+    "up": "UP"
+  },
+  "windows": {
+    "title": "Windows",
+    "empty": "No windows on this room yet.",
+    "window_n": "Window {{n}}",
+    "position": "Distance from wall start",
+    "width": "Window width",
+    "drag_label": "Drag to move window"
+  },
+  "edit_room": {
+    "title": "Edit room",
+    "title_room": "Edit room — {{room}}",
+    "select_hint": "Select a room on the canvas or in the list to edit it."
+  },
+  "vents": {
+    "title": "Vents",
+    "empty": "No vents on this room yet.",
+    "vent_n": "Vent {{n}}",
+    "position": "Distance from wall start",
+    "width": "Vent width",
+    "drag_label": "Drag to move vent"
+  },
+  "shaft": {
+    "label": "SHAFT"
+  }
+}

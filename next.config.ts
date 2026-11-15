@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // cacheComponents / partialPrefetching are off: this app is entirely client-side
+  // and they caused the dev server to stop hydrating the page after hot reloads.
   turbopack: {
     rules: {
       "*.css": {
