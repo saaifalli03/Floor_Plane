@@ -7,12 +7,20 @@ export interface SelectOption {
   label: string;
 }
 
-export interface FormSelectProps
-  extends Pick<FormItemProps, "name" | "label" | "rules" | "className"> {
+export interface FormSelectProps extends Pick<
+  FormItemProps,
+  "name" | "label" | "rules" | "className"
+> {
   options: SelectOption[];
 }
 
-export default function FormSelect({ name, label, rules, className, options }: FormSelectProps) {
+export default function FormSelect({
+  name,
+  label,
+  rules,
+  className,
+  options,
+}: FormSelectProps) {
   return (
     <Form.Item name={name} label={label} rules={rules} className={className}>
       <Select options={options} />

@@ -12,5 +12,11 @@ export default function PrimaryButton({
   className = "",
   ...rest
 }: PrimaryButtonProps) {
-  return <Button type={variantType} className={`font-medium ${className}`} {...rest} />;
+  return (
+    <Button
+      type={variantType}
+      className={`font-medium ${className}`}
+      {...rest}
+    />
+  );
 }

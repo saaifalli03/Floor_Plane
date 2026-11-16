@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   DEFAULT_PLOT,
   DOOR,
@@ -8,8 +9,11 @@ import {
   VENT,
   WINDOW,
 } from "@/constants/floorPlan";
+import { DEFAULT_EXTERIOR_PAINT } from "@/constants/view3d";
 import type {
   Door,
+  FloorFinish,
+  InRoomStairs,
   NewRoomInput,
   PlotSize,
   Rect,
@@ -40,6 +44,13 @@ import { applyRect, isBigEnough } from "@/utils/rooms";
 import { autoPlaceVents, ventOnWall, ventsFor } from "@/utils/vents";
 import { createId } from "@/utils/id";
 import {
+  defaultInRoomStairs,
+  normalizeInRoomStairs,
+  transposeInRoomStairs,
+} from "@/utils/inRoomStairs";
+import { sanitizePlan, type PlanData } from "@/utils/planFile";
+import { browserStorage, STORAGE_KEYS } from "./browserStorage";
+import {
   findFreePosition,
   isInsidePlot,
   isValidPlacement,
@@ -49,7 +60,12 @@ import {
 
 type ActionResult = { ok: true; room: Room } | { ok: false };
 
+export type ViewMode = "2d" | "3d";
+
 interface RoomState {
+  /** Whether the canvas shows the 2D plan or the 3D model. */
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
   plot: PlotSize;
   rooms: Room[];
   selectedId: string | null;
@@ -117,380 +133,531 @@ interface RoomState {
   autoPlaceVents: () => number;
   selectRoom: (id: string | null) => void;
   clearRooms: () => void;
+  /** Paint and floor for a room's 3D look; `undefined` resets a field to the type default. */
+  setRoomFinish: (
+    id: string,
+    patch: { wallColor?: string; floorFinish?: FloorFinish },
+  ) => void;
+  /** Give a room walls or take them away; `undefined` goes back to the type default. */
+  setRoomWalls: (id: string, walls: boolean | undefined) => void;
+  /** Add (true), change (a patch) or remove (null) the stairs inside a room. */
+  setRoomStairs: (
+    id: string,
+    stairs: true | Partial<InRoomStairs> | null,
+  ) => void;
+  /** Turn a room's furniture on/off, or remove individual pieces (3D). */
+  setRoomFurniture: (
+    id: string,
+    patch: { furniture?: boolean; hiddenFurniture?: string[] },
+  ) => void;
+  /** Paint on the outside walls of the house (3D). */
+  exteriorColor: string;
+  setExteriorColor: (color: string) => void;
+  /** The saved plan this one was opened from or last saved as (null: not saved yet). */
+  currentPlanId: string | null;
+  currentPlanName: string | null;
+  setCurrentPlan: (id: string | null, name: string | null) => void;
+  /** Replace the whole plan (opening a saved plan or a plan file). */
+  loadPlan: (
+    plan: PlanData,
+    meta: { id: string | null; name: string | null },
+  ) => void;
+  /** Start again with an empty plan. */
+  newPlan: () => void;
 }
 
-export const useRoomStore = create<RoomState>()((set, get) => ({
-  plot: DEFAULT_PLOT,
-  rooms: [],
-  selectedId: null,
-
-  setPlotSize: (plot) => {
-    const next = {
-      width: Math.round(plot.width),
-      length: Math.round(plot.length),
-    };
-    if (!get().rooms.every((r) => isInsidePlot(roomToRect(r), next)))
-      return false;
-    set({ plot: next });
-    return true;
-  },
-
-  addRoom: (input) => {
-    const { rooms, plot } = get();
-    const width = Math.round(input.width);
-    const length = Math.round(input.length);
-    const spot = findFreePosition(width, length, rooms, plot);
-    if (!spot) return { ok: false };
-    const room: Room = {
-      id: createId(),
-      type: input.type,
-      customName:
-        input.type === "custom" ? input.customName?.trim() : undefined,
-      width,
-      length,
-      x_position: spot.x,
-      y_position: spot.y,
-    };
-    const sealed = NO_OPENING_TYPES.includes(room.type);
-    room.doors =
-      room.type === "garden" || sealed ? [] : [suggestDoorFor(room, rooms)];
-    room.windows = windowsFor(room, rooms, room.doors);
-    room.vents = ventsFor(room, rooms);
-    set({ rooms: pruneInteriorWindows([...rooms, room]), selectedId: room.id });
-    return { ok: true, room };
-  },
-
-  moveRoom: (id, x, y) => {
-    const { rooms, plot } = get();
-    const room = rooms.find((r) => r.id === id);
-    if (!room) return false;
-    const next = {
-      x: Math.round(x),
-      y: Math.round(y),
-      width: room.width,
-      length: room.length,
-    };
-    if (!isValidPlacement(next, rooms, plot, id)) return false;
-    set({
-      rooms: pruneInteriorWindows(
-        rooms.map((r) =>
-          r.id === id ? { ...r, x_position: next.x, y_position: next.y } : r,
-        ),
-      ),
-    });
-    return true;
-  },
-
-  swapRooms: (aId, bId) => {
-    const { rooms, plot } = get();
-    const a = rooms.find((r) => r.id === aId);
-    const b = rooms.find((r) => r.id === bId);
-    if (!a || !b) return false;
-    const plan = planSwap(a, b, rooms, plot);
-    if (!plan) return false;
-    // Same-sized rooms trade their doors too, so each slot keeps its connections
-    // (e.g. a bedroom moved into a hallway-facing slot gets the hallway door).
-    const sameSize = a.width === b.width && a.length === b.length;
-    set({
-      rooms: pruneInteriorWindows(
-        rooms.map((r) => {
-          if (r.id === a.id)
-            return sameSize
-              ? {
-                  ...r,
-                  x_position: plan.a.x,
-                  y_position: plan.a.y,
-                  doors: b.doors,
-                  windows: b.windows,
-                  vents: b.vents,
-                }
-              : { ...r, x_position: plan.a.x, y_position: plan.a.y };
-          if (r.id === b.id)
-            return sameSize
-              ? {
-                  ...r,
-                  x_position: plan.b.x,
-                  y_position: plan.b.y,
-                  doors: a.doors,
-                  windows: a.windows,
-                  vents: a.vents,
-                }
-              : { ...r, x_position: plan.b.x, y_position: plan.b.y };
-          return r;
+export const useRoomStore = create<RoomState>()(
+  persist(
+    (set, get) => ({
+      viewMode: "2d",
+      currentPlanId: null,
+      currentPlanName: null,
+      setCurrentPlan: (currentPlanId, currentPlanName) =>
+        set({ currentPlanId, currentPlanName }),
+      loadPlan: (plan, meta) =>
+        set({
+          plot: plan.plot,
+          rooms: plan.rooms,
+          exteriorColor: plan.exteriorColor ?? DEFAULT_EXTERIOR_PAINT,
+          selectedId: null,
+          currentPlanId: meta.id,
+          currentPlanName: meta.name,
         }),
-      ),
-    });
-    return true;
-  },
-
-  rotateRoom: (id) => {
-    const { rooms, plot } = get();
-    const room = rooms.find((r) => r.id === id);
-    if (!room) return false;
-    const next = {
-      x: room.x_position,
-      y: room.y_position,
-      width: room.length,
-      length: room.width,
-    };
-    if (!isValidPlacement(next, rooms, plot, id)) return false;
-    set({
-      rooms: pruneInteriorWindows(
-        rooms.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                width: next.width,
-                length: next.length,
-                doors: transposeWallItems(r.doors),
-                windows: transposeWallItems(r.windows),
-                vents: transposeWallItems(r.vents),
-              }
-            : r,
-        ),
-      ),
-    });
-    return true;
-  },
-
-  resizeRoom: (id, rect) => {
-    const { rooms, plot } = get();
-    const room = rooms.find((r) => r.id === id);
-    const next = {
-      x: Math.round(rect.x),
-      y: Math.round(rect.y),
-      width: Math.round(rect.width),
-      length: Math.round(rect.length),
-    };
-    if (!room || !isBigEnough(next) || !isValidPlacement(next, rooms, plot, id))
-      return false;
-    set({
-      rooms: pruneInteriorWindows(
-        rooms.map((r) => (r.id === id ? applyRect(r, next) : r)),
-      ),
-    });
-    return true;
-  },
-
-  updateRoom: (id, patch) => {
-    const room = get().rooms.find((r) => r.id === id);
-    if (!room) return false;
-    const resized = get().resizeRoom(id, {
-      x: room.x_position,
-      y: room.y_position,
-      width: patch.width ?? room.width,
-      length: patch.length ?? room.length,
-    });
-    if (!resized) return false;
-    const type = patch.type ?? room.type;
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === id
-          ? {
-              ...r,
-              type,
-              customName:
-                type === "custom" ? patch.customName?.trim() : undefined,
-            }
-          : r,
-      ),
-    }));
-    return true;
-  },
-
-  replaceRooms: (rooms) =>
-    set({
-      rooms: rooms.map((r) => ({ ...r, id: createId() })),
+      newPlan: () =>
+        set({
+          plot: DEFAULT_PLOT,
+          rooms: [],
+          exteriorColor: DEFAULT_EXTERIOR_PAINT,
+          selectedId: null,
+          currentPlanId: null,
+          currentPlanName: null,
+        }),
+      setViewMode: (viewMode) => set({ viewMode }),
+      exteriorColor: DEFAULT_EXTERIOR_PAINT,
+      setExteriorColor: (exteriorColor) => set({ exteriorColor }),
+      setRoomFurniture: (id, patch) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  ...patch,
+                  // Store "everything shown" as nothing, keeping saved plans tidy.
+                  furniture:
+                    (patch.furniture ?? r.furniture) === false
+                      ? false
+                      : undefined,
+                  hiddenFurniture: (patch.hiddenFurniture ?? r.hiddenFurniture)
+                    ?.length
+                    ? (patch.hiddenFurniture ?? r.hiddenFurniture)
+                    : undefined,
+                }
+              : r,
+          ),
+        })),
+      setRoomWalls: (id, walls) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) => (r.id === id ? { ...r, walls } : r)),
+        })),
+      setRoomStairs: (id, change) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) => {
+            if (r.id !== id) return r;
+            if (change === null) return { ...r, stairs: undefined };
+            const next =
+              change === true || !r.stairs
+                ? defaultInRoomStairs(r, s.rooms)
+                : normalizeInRoomStairs(r, { ...r.stairs, ...change });
+            return next ? { ...r, stairs: next } : r;
+          }),
+        })),
+      setRoomFinish: (id, patch) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+        })),
+      plot: DEFAULT_PLOT,
+      rooms: [],
       selectedId: null,
+
+      setPlotSize: (plot) => {
+        const next = {
+          width: Math.round(plot.width),
+          length: Math.round(plot.length),
+        };
+        if (!get().rooms.every((r) => isInsidePlot(roomToRect(r), next)))
+          return false;
+        set({ plot: next });
+        return true;
+      },
+
+      addRoom: (input) => {
+        const { rooms, plot } = get();
+        const width = Math.round(input.width);
+        const length = Math.round(input.length);
+        const spot = findFreePosition(width, length, rooms, plot);
+        if (!spot) return { ok: false };
+        const room: Room = {
+          id: createId(),
+          type: input.type,
+          customName:
+            input.type === "custom" ? input.customName?.trim() : undefined,
+          width,
+          length,
+          x_position: spot.x,
+          y_position: spot.y,
+        };
+        const sealed = NO_OPENING_TYPES.includes(room.type);
+        room.doors =
+          room.type === "garden" || sealed ? [] : [suggestDoorFor(room, rooms)];
+        room.windows = windowsFor(room, rooms, room.doors);
+        room.vents = ventsFor(room, rooms);
+        set({
+          rooms: pruneInteriorWindows([...rooms, room]),
+          selectedId: room.id,
+        });
+        return { ok: true, room };
+      },
+
+      moveRoom: (id, x, y) => {
+        const { rooms, plot } = get();
+        const room = rooms.find((r) => r.id === id);
+        if (!room) return false;
+        const next = {
+          x: Math.round(x),
+          y: Math.round(y),
+          width: room.width,
+          length: room.length,
+        };
+        if (!isValidPlacement(next, rooms, plot, id)) return false;
+        set({
+          rooms: pruneInteriorWindows(
+            rooms.map((r) =>
+              r.id === id
+                ? { ...r, x_position: next.x, y_position: next.y }
+                : r,
+            ),
+          ),
+        });
+        return true;
+      },
+
+      swapRooms: (aId, bId) => {
+        const { rooms, plot } = get();
+        const a = rooms.find((r) => r.id === aId);
+        const b = rooms.find((r) => r.id === bId);
+        if (!a || !b) return false;
+        const plan = planSwap(a, b, rooms, plot);
+        if (!plan) return false;
+        // Same-sized rooms trade their doors too, so each slot keeps its connections
+        // (e.g. a bedroom moved into a hallway-facing slot gets the hallway door).
+        const sameSize = a.width === b.width && a.length === b.length;
+        set({
+          rooms: pruneInteriorWindows(
+            rooms.map((r) => {
+              if (r.id === a.id)
+                return sameSize
+                  ? {
+                      ...r,
+                      x_position: plan.a.x,
+                      y_position: plan.a.y,
+                      doors: b.doors,
+                      windows: b.windows,
+                      vents: b.vents,
+                    }
+                  : { ...r, x_position: plan.a.x, y_position: plan.a.y };
+              if (r.id === b.id)
+                return sameSize
+                  ? {
+                      ...r,
+                      x_position: plan.b.x,
+                      y_position: plan.b.y,
+                      doors: a.doors,
+                      windows: a.windows,
+                      vents: a.vents,
+                    }
+                  : { ...r, x_position: plan.b.x, y_position: plan.b.y };
+              return r;
+            }),
+          ),
+        });
+        return true;
+      },
+
+      rotateRoom: (id) => {
+        const { rooms, plot } = get();
+        const room = rooms.find((r) => r.id === id);
+        if (!room) return false;
+        const next = {
+          x: room.x_position,
+          y: room.y_position,
+          width: room.length,
+          length: room.width,
+        };
+        if (!isValidPlacement(next, rooms, plot, id)) return false;
+        set({
+          rooms: pruneInteriorWindows(
+            rooms.map((r) =>
+              r.id === id
+                ? {
+                    ...r,
+                    width: next.width,
+                    length: next.length,
+                    doors: transposeWallItems(r.doors),
+                    windows: transposeWallItems(r.windows),
+                    vents: transposeWallItems(r.vents),
+                    stairs: transposeInRoomStairs(r.stairs),
+                  }
+                : r,
+            ),
+          ),
+        });
+        return true;
+      },
+
+      resizeRoom: (id, rect) => {
+        const { rooms, plot } = get();
+        const room = rooms.find((r) => r.id === id);
+        const next = {
+          x: Math.round(rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          length: Math.round(rect.length),
+        };
+        if (
+          !room ||
+          !isBigEnough(next) ||
+          !isValidPlacement(next, rooms, plot, id)
+        )
+          return false;
+        set({
+          rooms: pruneInteriorWindows(
+            rooms.map((r) => (r.id === id ? applyRect(r, next) : r)),
+          ),
+        });
+        return true;
+      },
+
+      updateRoom: (id, patch) => {
+        const room = get().rooms.find((r) => r.id === id);
+        if (!room) return false;
+        const resized = get().resizeRoom(id, {
+          x: room.x_position,
+          y: room.y_position,
+          width: patch.width ?? room.width,
+          length: patch.length ?? room.length,
+        });
+        if (!resized) return false;
+        const type = patch.type ?? room.type;
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  type,
+                  customName:
+                    type === "custom" ? patch.customName?.trim() : undefined,
+                }
+              : r,
+          ),
+        }));
+        return true;
+      },
+
+      replaceRooms: (rooms) =>
+        set({
+          rooms: rooms.map((r) => ({ ...r, id: createId() })),
+          selectedId: null,
+        }),
+
+      removeRoom: (id) =>
+        set((s) => ({
+          rooms: s.rooms.filter((r) => r.id !== id),
+          selectedId: s.selectedId === id ? null : s.selectedId,
+        })),
+
+      addDoor: (roomId, wall) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  doors: [
+                    ...(r.doors ?? []),
+                    wall ? doorOnWall(r, wall) : defaultDoorFor(r),
+                  ],
+                }
+              : r,
+          ),
+        })),
+
+      updateDoor: (roomId, doorId, patch) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  doors: (r.doors ?? []).map((d) =>
+                    d.id === doorId ? normalizeDoor(r, { ...d, ...patch }) : d,
+                  ),
+                }
+              : r,
+          ),
+        })),
+
+      moveDoorTo: (roomId, doorId, x, y) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  doors: (r.doors ?? []).map((d) =>
+                    d.id === doorId
+                      ? moveWallItemToPoint(r, d, x, y, DOOR.min)
+                      : d,
+                  ),
+                }
+              : r,
+          ),
+        })),
+
+      removeDoor: (roomId, doorId) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? { ...r, doors: (r.doors ?? []).filter((d) => d.id !== doorId) }
+              : r,
+          ),
+        })),
+
+      autoPlaceDoors: () => {
+        const { rooms, plot } = get();
+        const placed = autoPlaceDoors(rooms, plot);
+        set({ rooms: rooms.map((r, i) => ({ ...r, doors: placed[i] })) });
+        return placed.reduce((n, d) => n + d.length, 0);
+      },
+
+      addWindow: (roomId, wall) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  windows: [
+                    ...(r.windows ?? []),
+                    wall ? windowOnWall(r, wall) : defaultWindowFor(r),
+                  ],
+                }
+              : r,
+          ),
+        })),
+
+      updateWindow: (roomId, windowId, patch) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  windows: (r.windows ?? []).map((w) =>
+                    w.id === windowId
+                      ? normalizeWallItem(r, { ...w, ...patch }, WINDOW.min)
+                      : w,
+                  ),
+                }
+              : r,
+          ),
+        })),
+
+      moveWindowTo: (roomId, windowId, x, y) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  windows: (r.windows ?? []).map((w) =>
+                    w.id === windowId
+                      ? moveWallItemToPoint(r, w, x, y, WINDOW.min)
+                      : w,
+                  ),
+                }
+              : r,
+          ),
+        })),
+
+      removeWindow: (roomId, windowId) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  windows: (r.windows ?? []).filter((w) => w.id !== windowId),
+                }
+              : r,
+          ),
+        })),
+
+      addVent: (roomId, wall) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? { ...r, vents: [...(r.vents ?? []), ventOnWall(r, wall)] }
+              : r,
+          ),
+        })),
+
+      updateVent: (roomId, ventId, patch) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  vents: (r.vents ?? []).map((v) =>
+                    v.id === ventId
+                      ? normalizeWallItem(r, { ...v, ...patch }, VENT.min)
+                      : v,
+                  ),
+                }
+              : r,
+          ),
+        })),
+
+      moveVentTo: (roomId, ventId, x, y) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? {
+                  ...r,
+                  vents: (r.vents ?? []).map((v) =>
+                    v.id === ventId
+                      ? moveWallItemToPoint(r, v, x, y, VENT.min)
+                      : v,
+                  ),
+                }
+              : r,
+          ),
+        })),
+
+      removeVent: (roomId, ventId) =>
+        set((s) => ({
+          rooms: s.rooms.map((r) =>
+            r.id === roomId
+              ? { ...r, vents: (r.vents ?? []).filter((v) => v.id !== ventId) }
+              : r,
+          ),
+        })),
+
+      autoPlaceVents: () => {
+        const { rooms } = get();
+        const placed = autoPlaceVents(rooms);
+        set({ rooms: rooms.map((r, i) => ({ ...r, vents: placed[i] })) });
+        return placed.reduce((n, v) => n + v.length, 0);
+      },
+
+      autoPlaceWindows: () => {
+        const { rooms } = get();
+        const placed = autoPlaceWindows(rooms);
+        set({ rooms: rooms.map((r, i) => ({ ...r, windows: placed[i] })) });
+        return placed.reduce((n, w) => n + w.length, 0);
+      },
+
+      selectRoom: (id) => set({ selectedId: id }),
+
+      clearRooms: () => set({ rooms: [], selectedId: null }),
     }),
-
-  removeRoom: (id) =>
-    set((s) => ({
-      rooms: s.rooms.filter((r) => r.id !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    })),
-
-  addDoor: (roomId, wall) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              doors: [
-                ...(r.doors ?? []),
-                wall ? doorOnWall(r, wall) : defaultDoorFor(r),
-              ],
-            }
-          : r,
-      ),
-    })),
-
-  updateDoor: (roomId, doorId, patch) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              doors: (r.doors ?? []).map((d) =>
-                d.id === doorId ? normalizeDoor(r, { ...d, ...patch }) : d,
-              ),
-            }
-          : r,
-      ),
-    })),
-
-  moveDoorTo: (roomId, doorId, x, y) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              doors: (r.doors ?? []).map((d) =>
-                d.id === doorId ? moveWallItemToPoint(r, d, x, y, DOOR.min) : d,
-              ),
-            }
-          : r,
-      ),
-    })),
-
-  removeDoor: (roomId, doorId) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? { ...r, doors: (r.doors ?? []).filter((d) => d.id !== doorId) }
-          : r,
-      ),
-    })),
-
-  autoPlaceDoors: () => {
-    const { rooms, plot } = get();
-    const placed = autoPlaceDoors(rooms, plot);
-    set({ rooms: rooms.map((r, i) => ({ ...r, doors: placed[i] })) });
-    return placed.reduce((n, d) => n + d.length, 0);
-  },
-
-  addWindow: (roomId, wall) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              windows: [
-                ...(r.windows ?? []),
-                wall ? windowOnWall(r, wall) : defaultWindowFor(r),
-              ],
-            }
-          : r,
-      ),
-    })),
-
-  updateWindow: (roomId, windowId, patch) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              windows: (r.windows ?? []).map((w) =>
-                w.id === windowId
-                  ? normalizeWallItem(r, { ...w, ...patch }, WINDOW.min)
-                  : w,
-              ),
-            }
-          : r,
-      ),
-    })),
-
-  moveWindowTo: (roomId, windowId, x, y) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              windows: (r.windows ?? []).map((w) =>
-                w.id === windowId
-                  ? moveWallItemToPoint(r, w, x, y, WINDOW.min)
-                  : w,
-              ),
-            }
-          : r,
-      ),
-    })),
-
-  removeWindow: (roomId, windowId) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              windows: (r.windows ?? []).filter((w) => w.id !== windowId),
-            }
-          : r,
-      ),
-    })),
-
-  addVent: (roomId, wall) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? { ...r, vents: [...(r.vents ?? []), ventOnWall(r, wall)] }
-          : r,
-      ),
-    })),
-
-  updateVent: (roomId, ventId, patch) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              vents: (r.vents ?? []).map((v) =>
-                v.id === ventId
-                  ? normalizeWallItem(r, { ...v, ...patch }, VENT.min)
-                  : v,
-              ),
-            }
-          : r,
-      ),
-    })),
-
-  moveVentTo: (roomId, ventId, x, y) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? {
-              ...r,
-              vents: (r.vents ?? []).map((v) =>
-                v.id === ventId ? moveWallItemToPoint(r, v, x, y, VENT.min) : v,
-              ),
-            }
-          : r,
-      ),
-    })),
-
-  removeVent: (roomId, ventId) =>
-    set((s) => ({
-      rooms: s.rooms.map((r) =>
-        r.id === roomId
-          ? { ...r, vents: (r.vents ?? []).filter((v) => v.id !== ventId) }
-          : r,
-      ),
-    })),
-
-  autoPlaceVents: () => {
-    const { rooms } = get();
-    const placed = autoPlaceVents(rooms);
-    set({ rooms: rooms.map((r, i) => ({ ...r, vents: placed[i] })) });
-    return placed.reduce((n, v) => n + v.length, 0);
-  },
-
-  autoPlaceWindows: () => {
-    const { rooms } = get();
-    const placed = autoPlaceWindows(rooms);
-    set({ rooms: rooms.map((r, i) => ({ ...r, windows: placed[i] })) });
-    return placed.reduce((n, w) => n + w.length, 0);
-  },
-
-  selectRoom: (id) => set({ selectedId: id }),
-
-  clearRooms: () => set({ rooms: [], selectedId: null }),
-}));
+    {
+      // Autosave: the plan you're working on is kept in this browser, so it's still
+      // there after a refresh or when you come back later.
+      name: STORAGE_KEYS.current,
+      version: 1,
+      storage: browserStorage,
+      // Loaded after the first render (see PlanPersistence) to keep hydration clean.
+      skipHydration: true,
+      partialize: (s) => ({
+        plot: s.plot,
+        rooms: s.rooms,
+        exteriorColor: s.exteriorColor,
+        currentPlanId: s.currentPlanId,
+        currentPlanName: s.currentPlanName,
+      }),
+      // Stored data is checked like an imported file; anything unusable is ignored.
+      merge: (persisted, current) => {
+        const stored = persisted as Partial<RoomState> | undefined;
+        const plan = sanitizePlan(stored);
+        if (!plan) return current;
+        return {
+          ...current,
+          plot: plan.plot,
+          rooms: plan.rooms,
+          exteriorColor: plan.exteriorColor ?? DEFAULT_EXTERIOR_PAINT,
+          currentPlanId:
+            typeof stored?.currentPlanId === "string"
+              ? stored.currentPlanId
+              : null,
+          currentPlanName:
+            typeof stored?.currentPlanName === "string"
+              ? stored.currentPlanName
+              : null,
+        };
+      },
+    },
+  ),
+);

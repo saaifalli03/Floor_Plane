@@ -7,7 +7,8 @@ import {
 } from "@/constants/floorPlan";
 import type { PlotSize, Rect, Room } from "@/types/room";
 
-export const snap = (value: number, step = SNAP_INCHES) => Math.round(value / step) * step;
+export const snap = (value: number, step = SNAP_INCHES) =>
+  Math.round(value / step) * step;
 
 export const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -21,16 +22,28 @@ export const roomToRect = (room: Room): Rect => ({
 
 /** Strict overlap: rooms that merely share a wall do not collide. */
 export const rectsOverlap = (a: Rect, b: Rect) =>
-  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.length && a.y + a.length > b.y;
+  a.x < b.x + b.width &&
+  a.x + a.width > b.x &&
+  a.y < b.y + b.length &&
+  a.y + a.length > b.y;
 
 export const isInsidePlot = (r: Rect, plot: PlotSize) =>
-  r.x >= 0 && r.y >= 0 && r.x + r.width <= plot.width && r.y + r.length <= plot.length;
+  r.x >= 0 &&
+  r.y >= 0 &&
+  r.x + r.width <= plot.width &&
+  r.y + r.length <= plot.length;
 
 export const collidesWithAny = (rect: Rect, rooms: Room[], ignoreId?: string) =>
-  rooms.some((room) => room.id !== ignoreId && rectsOverlap(rect, roomToRect(room)));
+  rooms.some(
+    (room) => room.id !== ignoreId && rectsOverlap(rect, roomToRect(room)),
+  );
 
-export const isValidPlacement = (rect: Rect, rooms: Room[], plot: PlotSize, ignoreId?: string) =>
-  isInsidePlot(rect, plot) && !collidesWithAny(rect, rooms, ignoreId);
+export const isValidPlacement = (
+  rect: Rect,
+  rooms: Room[],
+  plot: PlotSize,
+  ignoreId?: string,
+) => isInsidePlot(rect, plot) && !collidesWithAny(rect, rooms, ignoreId);
 
 /** Scan the plot row by row for the first free slot. */
 export const findFreePosition = (
@@ -51,7 +64,13 @@ export const findFreePosition = (
  * Snap one axis: prefer lining an edge up with a nearby wall (other rooms or the plot
  * boundary) within `threshold`, otherwise fall back to the grid. Result stays inside the plot.
  */
-const snapAxis = (raw: number, size: number, walls: number[], max: number, threshold: number) => {
+const snapAxis = (
+  raw: number,
+  size: number,
+  walls: number[],
+  max: number,
+  threshold: number,
+) => {
   let best = snap(raw);
   let bestDist = threshold;
   for (const wall of walls) {
@@ -76,11 +95,31 @@ export const computeDragPosition = (
   threshold: number,
 ) => {
   const others = rooms.filter((r) => r.id !== room.id);
-  const xWalls = [0, plot.width, ...others.flatMap((r) => [r.x_position, r.x_position + r.width])];
-  const yWalls = [0, plot.length, ...others.flatMap((r) => [r.y_position, r.y_position + r.length])];
+  const xWalls = [
+    0,
+    plot.width,
+    ...others.flatMap((r) => [r.x_position, r.x_position + r.width]),
+  ];
+  const yWalls = [
+    0,
+    plot.length,
+    ...others.flatMap((r) => [r.y_position, r.y_position + r.length]),
+  ];
   return {
-    x: snapAxis(room.x_position + dx, room.width, xWalls, plot.width, threshold),
-    y: snapAxis(room.y_position + dy, room.length, yWalls, plot.length, threshold),
+    x: snapAxis(
+      room.x_position + dx,
+      room.width,
+      xWalls,
+      plot.width,
+      threshold,
+    ),
+    y: snapAxis(
+      room.y_position + dy,
+      room.length,
+      yWalls,
+      plot.length,
+      threshold,
+    ),
   };
 };
 
@@ -95,18 +134,29 @@ export const pxPerInchFor = (plot: PlotSize) => {
 
 /** Square feet, rounded to one decimal. */
 export const areaSqFt = (width: number, length: number) =>
-  Math.round(((width * length) / (INCHES_PER_FOOT * INCHES_PER_FOOT)) * 10) / 10;
+  Math.round(((width * length) / (INCHES_PER_FOOT * INCHES_PER_FOOT)) * 10) /
+  10;
 
 export const totalAreaSqFt = (rooms: Room[]) =>
-  Math.round(rooms.reduce((sum, r) => sum + areaSqFt(r.width, r.length), 0) * 10) / 10;
+  Math.round(
+    rooms.reduce((sum, r) => sum + areaSqFt(r.width, r.length), 0) * 10,
+  ) / 10;
 
 export const splitFeetInches = (totalInches: number) => {
   const rounded = Math.round(totalInches);
-  return { feet: Math.floor(rounded / INCHES_PER_FOOT), inches: rounded % INCHES_PER_FOOT };
+  return {
+    feet: Math.floor(rounded / INCHES_PER_FOOT),
+    inches: rounded % INCHES_PER_FOOT,
+  };
 };
 
 /** The other room containing point (x, y), if any. */
-export const roomAtPoint = (x: number, y: number, rooms: Room[], ignoreId?: string) =>
+export const roomAtPoint = (
+  x: number,
+  y: number,
+  rooms: Room[],
+  ignoreId?: string,
+) =>
   rooms.find(
     (r) =>
       r.id !== ignoreId &&
@@ -121,10 +171,21 @@ export const roomAtPoint = (x: number, y: number, rooms: Room[], ignoreId?: stri
  * new positions, or null if either room would leave the plot or hit another room.
  */
 export const planSwap = (a: Room, b: Room, rooms: Room[], plot: PlotSize) => {
-  const nextA: Rect = { x: b.x_position, y: b.y_position, width: a.width, length: a.length };
-  const nextB: Rect = { x: a.x_position, y: a.y_position, width: b.width, length: b.length };
+  const nextA: Rect = {
+    x: b.x_position,
+    y: b.y_position,
+    width: a.width,
+    length: a.length,
+  };
+  const nextB: Rect = {
+    x: a.x_position,
+    y: a.y_position,
+    width: b.width,
+    length: b.length,
+  };
   const others = rooms.filter((r) => r.id !== a.id && r.id !== b.id);
-  const fits = (r: Rect) => isInsidePlot(r, plot) && !collidesWithAny(r, others);
+  const fits = (r: Rect) =>
+    isInsidePlot(r, plot) && !collidesWithAny(r, others);
   if (!fits(nextA) || !fits(nextB) || rectsOverlap(nextA, nextB)) return null;
   return { a: { x: nextA.x, y: nextA.y }, b: { x: nextB.x, y: nextB.y } };
 };
@@ -147,7 +208,15 @@ export const snapEdge = (raw: number, walls: number[], threshold: number) => {
 export const wallLines = (rooms: Room[], plot: PlotSize, ignoreId?: string) => {
   const others = rooms.filter((r) => r.id !== ignoreId);
   return {
-    x: [0, plot.width, ...others.flatMap((r) => [r.x_position, r.x_position + r.width])],
-    y: [0, plot.length, ...others.flatMap((r) => [r.y_position, r.y_position + r.length])],
+    x: [
+      0,
+      plot.width,
+      ...others.flatMap((r) => [r.x_position, r.x_position + r.width]),
+    ],
+    y: [
+      0,
+      plot.length,
+      ...others.flatMap((r) => [r.y_position, r.y_position + r.length]),
+    ],
   };
 };

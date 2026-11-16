@@ -11,7 +11,10 @@ const MARGIN_MM = 12;
 const HEADER_MM = 18;
 
 /** Rasterises a DOM element at high resolution and saves it as a landscape A4 PDF. */
-export async function exportElementToPdf(element: HTMLElement, opts: PdfExportOptions) {
+export async function exportElementToPdf(
+  element: HTMLElement,
+  opts: PdfExportOptions,
+) {
   const canvas = await html2canvas(element, {
     scale: 3,
     backgroundColor: "#ffffff",
@@ -39,6 +42,15 @@ export async function exportElementToPdf(element: HTMLElement, opts: PdfExportOp
   const x = (pageW - imgW) / 2;
   const y = MARGIN_MM + HEADER_MM;
 
-  pdf.addImage(canvas.toDataURL("image/png"), "PNG", x, y, imgW, imgH, undefined, "FAST");
+  pdf.addImage(
+    canvas.toDataURL("image/png"),
+    "PNG",
+    x,
+    y,
+    imgW,
+    imgH,
+    undefined,
+    "FAST",
+  );
   pdf.save(`${opts.fileName}.pdf`);
 }

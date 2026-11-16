@@ -14,7 +14,12 @@ export interface FeetInchesInputProps {
 }
 
 /** Two linked number boxes (ft + in) that read and write a single inch value. */
-export default function FeetInchesInput({ value, onChange, maxFeet, id }: FeetInchesInputProps) {
+export default function FeetInchesInput({
+  value,
+  onChange,
+  maxFeet,
+  id,
+}: FeetInchesInputProps) {
   const { t } = useTranslation();
   const { feet, inches } = splitFeetInches(value ?? 0);
 

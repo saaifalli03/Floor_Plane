@@ -13,11 +13,20 @@ export function useDimensionRules(min: number, max: number): FormRule[] {
     () => [
       {
         validator: (_, value?: number) => {
-          if (value == null) return Promise.reject(new Error(t("validation.required")));
+          if (value == null)
+            return Promise.reject(new Error(t("validation.required")));
           if (value < min)
-            return Promise.reject(new Error(t("validation.min_dimension", { min: formatLength(min) })));
+            return Promise.reject(
+              new Error(
+                t("validation.min_dimension", { min: formatLength(min) }),
+              ),
+            );
           if (value > max)
-            return Promise.reject(new Error(t("validation.max_dimension", { max: formatLength(max) })));
+            return Promise.reject(
+              new Error(
+                t("validation.max_dimension", { max: formatLength(max) }),
+              ),
+            );
           return Promise.resolve();
         },
       },

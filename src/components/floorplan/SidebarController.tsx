@@ -26,7 +26,7 @@ export default function SidebarController() {
   const autoDoors = useAutoDoors();
 
   return (
-    <aside className="flex w-full flex-col gap-4 lg:w-80 lg:shrink-0">
+    <aside className="flex w-full flex-col gap-4 lg:min-h-0 lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain lg:pb-2 lg:pr-2">
       <PanelCard title={t("sidebar.plot_title")}>
         <PlotSettings />
       </PanelCard>

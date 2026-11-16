@@ -20,7 +20,10 @@ export const CANVAS_TARGET_PX = { width: 1200, height: 800 };
 export const MIN_PX_PER_FOOT = 3;
 export const MAX_PX_PER_FOOT = 40;
 
-export const DEFAULT_ROOM_SIZE: Record<RoomType, { width: number; length: number }> = {
+export const DEFAULT_ROOM_SIZE: Record<
+  RoomType,
+  { width: number; length: number }
+> = {
   bedroom: { width: ft(12), length: ft(12) },
   kitchen: { width: ft(10), length: ft(12) },
   living_area: { width: ft(18), length: ft(16) },
@@ -32,11 +35,15 @@ export const DEFAULT_ROOM_SIZE: Record<RoomType, { width: number; length: number
   dining: { width: ft(12), length: ft(10) },
   hallway: { width: ft(4), length: ft(15) },
   vent_shaft: { width: ft(3), length: ft(3) },
+  open_space: { width: ft(10), length: ft(10) },
   custom: { width: ft(10), length: ft(10) },
 };
 
 /** Fill / border colours per room type (hex so html2canvas renders them reliably). */
-export const ROOM_COLORS: Record<RoomType, { fill: string; border: string; text: string }> = {
+export const ROOM_COLORS: Record<
+  RoomType,
+  { fill: string; border: string; text: string }
+> = {
   bedroom: { fill: "#e0e7ff", border: "#6366f1", text: "#312e81" },
   kitchen: { fill: "#fef3c7", border: "#d97706", text: "#78350f" },
   living_area: { fill: "#dcfce7", border: "#16a34a", text: "#14532d" },
@@ -48,6 +55,7 @@ export const ROOM_COLORS: Record<RoomType, { fill: string; border: string; text:
   dining: { fill: "#fde68a", border: "#ca8a04", text: "#713f12" },
   hallway: { fill: "#f5f5f4", border: "#a8a29e", text: "#44403c" },
   vent_shaft: { fill: "#e0f2fe", border: "#0369a1", text: "#0c4a6e" },
+  open_space: { fill: "#fafaf9", border: "#a8a29e", text: "#57534e" },
   custom: { fill: "#ffedd5", border: "#ea580c", text: "#7c2d12" },
 };
 
@@ -84,6 +92,7 @@ export const WINDOW_RULES: Record<RoomType, { width: number; max: number }> = {
   stairs: { width: 0, max: 0 },
   garden: { width: 0, max: 0 },
   vent_shaft: { width: 0, max: 0 },
+  open_space: { width: 0, max: 0 },
 };
 
 /** Wall vent sizing (inches). */
@@ -96,15 +105,49 @@ export const VENT_RULES: Partial<Record<RoomType, number>> = {
   garage: 12,
 };
 
+/** Room types that have no walls unless the user turns them on. */
+export const WALLLESS_TYPES: RoomType[] = [
+  "garden",
+  "vent_shaft",
+  "open_space",
+];
+
+/** Room types that can't have a flight of stairs built inside them. */
+export const NO_STAIRS_INSIDE: RoomType[] = ["stairs", "vent_shaft"];
+
+/** Stairs inside a room (inches). */
+export const IN_ROOM_STAIRS = {
+  run: 120,
+  width: 36,
+  minRun: 72,
+  minWidth: 30,
+  maxWidth: 60,
+  /** Floor kept clear in front of the bottom step. */
+  landing: 36,
+  /** Under-stair cupboard doors start where there's at least this much headroom. */
+  storageMinHeight: 30,
+  storageDoorWidth: 24,
+} as const;
+
 /** Room types that never get doors, windows or vents of their own. */
 export const NO_OPENING_TYPES: RoomType[] = ["vent_shaft"];
 
-export const VENT_COLORS = { frame: "#0369a1", slat: "#0369a1", fill: "#f0f9ff" };
+export const VENT_COLORS = {
+  frame: "#0369a1",
+  slat: "#0369a1",
+  fill: "#f0f9ff",
+};
 
-export const WINDOW_COLORS = { frame: "#334155", glass: "#0284c7", fill: "#ffffff" };
+export const WINDOW_COLORS = {
+  frame: "#334155",
+  glass: "#0284c7",
+  fill: "#ffffff",
+};
 
 /** Typical stair tread depth, used to space tread lines on the plan (inches). */
 export const STAIR_TREAD_IN = 10;
+/** Shortest flight worth turning to face its opening (6'). */
+export const STAIR_MIN_RUN_IN = 72;
 
 export const DOOR_COLORS = {
   leaf: "#334155",

@@ -15,6 +15,9 @@ import { useDimensionRules } from "@/hooks/useDimensionRules";
 import { useRoomLabel } from "@/hooks/useRoomLabel";
 import { useRoomStore } from "@/store/useRoomStore";
 import { ROOM_TYPES, type Room, type RoomType } from "@/types/room";
+import RoomFinishes from "./RoomFinishes";
+import RoomFurniture from "./RoomFurniture";
+import RoomStructure from "./RoomStructure";
 
 interface EditValues {
   type: RoomType;
@@ -91,7 +94,7 @@ function RoomEditForm({ room }: { room: Room }) {
   );
 }
 
-/** Edit the selected room's type, name and size. */
+/** Edit the selected room's type, name, size, wall paint and floor. */
 export default function RoomEditor() {
   const { t } = useTranslation();
   const room = useRoomStore((s) => s.rooms.find((r) => r.id === s.selectedId));
@@ -101,9 +104,14 @@ export default function RoomEditor() {
     );
   // Re-mount when the room changes elsewhere (e.g. resized on the canvas) so the form shows it.
   return (
-    <RoomEditForm
-      key={`${room.id}-${room.type}-${room.customName}-${room.width}-${room.length}`}
-      room={room}
-    />
+    <>
+      <RoomEditForm
+        key={`${room.id}-${room.type}-${room.customName}-${room.width}-${room.length}`}
+        room={room}
+      />
+      <RoomStructure room={room} />
+      <RoomFinishes room={room} />
+      <RoomFurniture room={room} />
+    </>
   );
 }

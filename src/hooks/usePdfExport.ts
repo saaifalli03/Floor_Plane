@@ -8,7 +8,8 @@ import { useRoomStore } from "@/store/useRoomStore";
 import { exportElementToPdf } from "@/utils/exportPdf";
 import { useLengthFormat } from "./useLengthFormat";
 
-const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+const nextFrame = () =>
+  new Promise((r) => requestAnimationFrame(() => r(null)));
 
 export function usePdfExport() {
   const { t, i18n } = useTranslation();
@@ -21,6 +22,16 @@ export function usePdfExport() {
     if (rooms.length === 0) {
       message.warning(t("messages.export_empty"));
       return;
+    }
+    // The PDF is the 2D plan: switch back to it if the 3D view is showing.
+    if (useRoomStore.getState().viewMode !== "2d") {
+      useRoomStore.getState().setViewMode("2d");
+      for (
+        let i = 0;
+        i < 30 && !document.getElementById(CANVAS_ELEMENT_ID);
+        i++
+      )
+        await nextFrame();
     }
     const element = document.getElementById(CANVAS_ELEMENT_ID);
     if (!element) return;

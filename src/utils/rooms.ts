@@ -1,6 +1,7 @@
 import { DOOR, MIN_ROOM_IN, VENT, WINDOW } from "@/constants/floorPlan";
 import type { Rect, Room, WallItem } from "@/types/room";
 import { normalizeWallItem } from "./doors";
+import { normalizeInRoomStairs } from "./inRoomStairs";
 
 /**
  * Give a room a new rectangle, keeping its doors and windows where they physically
@@ -31,6 +32,17 @@ export const applyRect = (room: Room, rect: Rect): Room => {
     doors: room.doors?.map((d) => shift(d, DOOR.min)),
     windows: room.windows?.map((w) => shift(w, WINDOW.min)),
     vents: room.vents?.map((v) => shift(v, VENT.min)),
+    // Stairs inside the room stay put too (or go, if the room gets too small).
+    stairs: room.stairs
+      ? normalizeInRoomStairs(next, {
+          ...room.stairs,
+          offset:
+            room.stairs.offset -
+            (room.stairs.wall === "top" || room.stairs.wall === "bottom"
+              ? dx
+              : dy),
+        })
+      : undefined,
   };
 };
 

@@ -8,7 +8,10 @@ export type PlacedRoom = Omit<Room, "id">;
 export const isPortrait = (plot: PlotSize) => plot.length > plot.width;
 
 /** Minimum plot (inches) in the orientation the template will be used for this plot. */
-export const templateMinPlot = (template: HouseTemplate, plot: PlotSize): PlotSize => {
+export const templateMinPlot = (
+  template: HouseTemplate,
+  plot: PlotSize,
+): PlotSize => {
   const w = template.minPlotFt.width * INCHES_PER_FOOT;
   const l = template.minPlotFt.length * INCHES_PER_FOOT;
   return isPortrait(plot) ? { width: l, length: w } : { width: w, length: l };
@@ -23,13 +26,18 @@ export const templateFits = (template: HouseTemplate, plot: PlotSize) => {
  * Scale a template's percentage layout to the plot. Edges are rounded to whole inches
  * first and sizes derived from them, so neighbouring rooms stay exactly flush.
  */
-export const buildTemplateRooms = (template: HouseTemplate, plot: PlotSize): PlacedRoom[] => {
+export const buildTemplateRooms = (
+  template: HouseTemplate,
+  plot: PlotSize,
+): PlacedRoom[] => {
   const portrait = isPortrait(plot);
   const edge = (pct: number, total: number) => Math.round((pct / 100) * total);
 
   return template.rooms
     .map((r) => {
-      const [x, y, w, l] = portrait ? [r.y, r.x, r.l, r.w] : [r.x, r.y, r.w, r.l];
+      const [x, y, w, l] = portrait
+        ? [r.y, r.x, r.l, r.w]
+        : [r.x, r.y, r.w, r.l];
       const left = edge(x, plot.width);
       const top = edge(y, plot.length);
       return {

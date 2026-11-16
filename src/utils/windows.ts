@@ -115,11 +115,15 @@ export const pruneInteriorWindows = <
       .filter((span): span is WallSpan => !!span);
     const outside = (w: WallItem) =>
       !shared.some(
-        (span) => span.wall === w.wall && w.offset < span.end && w.offset + w.width > span.start,
+        (span) =>
+          span.wall === w.wall &&
+          w.offset < span.end &&
+          w.offset + w.width > span.start,
       );
     const windows = room.windows?.filter(outside);
     const vents = room.vents?.filter(outside);
-    return windows?.length === room.windows?.length && vents?.length === room.vents?.length
+    return windows?.length === room.windows?.length &&
+      vents?.length === room.vents?.length
       ? room
       : { ...room, windows, vents };
   });

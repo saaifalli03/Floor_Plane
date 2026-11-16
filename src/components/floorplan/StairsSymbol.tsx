@@ -3,6 +3,7 @@
 import { useTranslation } from "react-i18next";
 import { STAIR_TREAD_IN } from "@/constants/floorPlan";
 import type { Wall } from "@/types/room";
+import { stairsLayout } from "@/utils/stairs";
 
 export interface StairsSymbolProps {
   /** Room size in inches and px. */
@@ -10,31 +11,30 @@ export interface StairsSymbolProps {
   length: number;
   pxPerInch: number;
   color: string;
-  /** Wall at the foot of the flight (where you step on); the arrow points away from it. */
-  foot?: Wall;
+  /** Wall of the stairs' opening; the flight climbs away from it where it can. */
+  entry?: Wall;
 }
 
 /**
  * Plan symbol for a straight flight of stairs: tread lines across the run, plus an
  * arrow along the centre pointing up the flight with an "UP" label at its foot.
- * The flight runs along the room's longer side.
+ * Direction comes from stairsLayout, the same as in the 3D model.
  */
 export default function StairsSymbol({
   width,
   length,
   pxPerInch,
   color,
-  foot,
+  entry,
 }: StairsSymbolProps) {
   const { t } = useTranslation();
-  const vertical = length >= width;
+  const { vertical, foot } = stairsLayout(width, length, entry);
   const run = (vertical ? length : width) * pxPerInch;
   const span = (vertical ? width : length) * pxPerInch;
   const step = STAIR_TREAD_IN * pxPerInch;
   const treads = Math.max(1, Math.floor(run / step));
   const gap = run / treads;
   const head = Math.max(5, Math.min(span * 0.15, 10));
-  // Default foot is the bottom (vertical flight) or left (horizontal flight) end.
   const reversed = vertical ? foot === "top" : foot === "right";
   const mid = span / 2;
   const shaftStart = gap * 0.5;

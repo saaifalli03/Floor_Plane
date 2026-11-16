@@ -7,6 +7,8 @@ import { ROOM_COLORS, SWAP_COLOR } from "@/constants/floorPlan";
 import { useLengthFormat } from "@/hooks/useLengthFormat";
 import { useRoomLabel } from "@/hooks/useRoomLabel";
 import type { Room } from "@/types/room";
+import { hasWalls } from "@/utils/inRoomStairs";
+import InRoomStairsSymbol from "./InRoomStairsSymbol";
 import DoorSymbol from "./DoorSymbol";
 import RoomActions from "./RoomActions";
 import RoomResizeHandles from "./RoomResizeHandles";
@@ -49,6 +51,7 @@ function RoomBlock({
   const compact = widthPx < 90 || heightPx < 60;
   const tiny = widthPx < 45 || heightPx < 30;
   const isStairs = room.type === "stairs";
+  const walled = hasWalls(room);
 
   return (
     <div
@@ -68,7 +71,8 @@ function RoomBlock({
         height: heightPx,
         transform: CSS.Translate.toString(transform),
         background: invalid ? "#fee2e2" : colors.fill,
-        border: `2px solid ${invalid ? "#dc2626" : colors.border}`,
+        // A dashed outline marks a room without walls (open to its neighbours).
+        border: `2px ${walled ? "solid" : "dashed"} ${invalid ? "#dc2626" : colors.border}`,
         color: colors.text,
         // No z-index at rest: rooms then share one stacking context, letting door
         // openings (z 15) paint over the neighbouring room's wall.
@@ -89,7 +93,16 @@ function RoomBlock({
           length={room.length}
           pxPerInch={pxPerInch}
           color={colors.border}
-          foot={room.doors?.[0]?.wall}
+          entry={room.doors?.[0]?.wall}
+        />
+      )}
+
+      {room.stairs && (
+        <InRoomStairsSymbol
+          room={room}
+          stairs={room.stairs}
+          pxPerInch={pxPerInch}
+          color={colors.border}
         />
       )}
 

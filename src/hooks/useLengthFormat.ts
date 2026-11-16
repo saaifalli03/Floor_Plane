@@ -20,7 +20,10 @@ export function useLengthFormat() {
 
   const formatDimensions = useCallback(
     (width: number, length: number) =>
-      t("dimensions_value", { width: formatLength(width), length: formatLength(length) }),
+      t("dimensions_value", {
+        width: formatLength(width),
+        length: formatLength(length),
+      }),
     [formatLength, t],
   );
 

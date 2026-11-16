@@ -10,6 +10,7 @@ export const ROOM_TYPES = [
   "stairs",
   "garage",
   "garden",
+  "open_space",
   "custom",
 ] as const;
 
@@ -19,6 +20,17 @@ export const DOOR_KINDS = ["swing", "opening", "overhead"] as const;
 export type DoorKind = (typeof DOOR_KINDS)[number];
 
 export const WALLS = ["top", "right", "bottom", "left"] as const;
+
+/** Floor surfaces for the 3D view. */
+export const FLOOR_FINISHES = [
+  "wood",
+  "tile",
+  "marble",
+  "carpet",
+  "concrete",
+  "grass",
+] as const;
+export type FloorFinish = (typeof FLOOR_FINISHES)[number];
 export type Wall = (typeof WALLS)[number];
 
 /**
@@ -54,13 +66,42 @@ export interface Room {
   doors?: Door[];
   windows?: RoomWindow[];
   vents?: RoomVent[];
+  /** Paint on the room's inside walls (hex). Unset: the default for its type. */
+  wallColor?: string;
+  /** Floor surface. Unset: the default for its type. */
+  floorFinish?: FloorFinish;
+  /** Whether the room has walls of its own. Unset: the default for its type. */
+  walls?: boolean;
+  /** A flight of stairs built inside the room (e.g. in a garage or lounge). */
+  stairs?: InRoomStairs;
+  /** Set to false to take all furniture out of the room (3D). */
+  furniture?: boolean;
+  /** Individual pieces taken out of the room (see FURNITURE_KEYS). */
+  hiddenFurniture?: string[];
+}
+
+/**
+ * A straight flight of stairs inside a room, backing onto one of its walls. Like a
+ * wall item, `offset` is where it starts along that wall; `run` is how long it is
+ * along the wall and `width` how far it comes out into the room. It climbs from the
+ * wall's start towards its end, or the other way when `reverse` is set.
+ */
+export interface InRoomStairs {
+  wall: Wall;
+  offset: number;
+  run: number;
+  width: number;
+  reverse?: boolean;
 }
 
 export type RoomWindow = WallItem;
 /** A louvred ventilation opening in a wall (exhaust / air vent). */
 export type RoomVent = WallItem;
 
-export type NewRoomInput = Pick<Room, "type" | "customName" | "width" | "length">;
+export type NewRoomInput = Pick<
+  Room,
+  "type" | "customName" | "width" | "length"
+>;
 
 /** Plot (canvas) size in inches. */
 export interface PlotSize {

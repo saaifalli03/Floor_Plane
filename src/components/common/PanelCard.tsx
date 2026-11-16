@@ -8,9 +8,19 @@ export interface PanelCardProps {
   className?: string;
 }
 
-export default function PanelCard({ title, extra, children, className = "" }: PanelCardProps) {
+export default function PanelCard({
+  title,
+  extra,
+  children,
+  className = "",
+}: PanelCardProps) {
   return (
-    <Card title={title} extra={extra} size="small" className={`shadow-sm ${className}`}>
+    <Card
+      title={title}
+      extra={extra}
+      size="small"
+      className={`shadow-sm ${className}`}
+    >
       {children}
     </Card>
   );

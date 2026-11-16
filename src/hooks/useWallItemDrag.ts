@@ -1,6 +1,10 @@
 "use client";
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useRoomStore } from "@/store/useRoomStore";
 
 /**
@@ -22,7 +26,9 @@ export function useWallItemDrag(
     e.preventDefault();
     selectRoom(roomId);
     roomRect.current =
-      e.currentTarget.closest("[aria-roledescription]")?.getBoundingClientRect() ?? null;
+      e.currentTarget
+        .closest("[aria-roledescription]")
+        ?.getBoundingClientRect() ?? null;
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
@@ -34,7 +40,10 @@ export function useWallItemDrag(
   const onPointerMove = (e: ReactPointerEvent<HTMLElement>) => {
     const rect = roomRect.current;
     if (!dragging || !rect) return;
-    onMove((e.clientX - rect.left) / pxPerInch, (e.clientY - rect.top) / pxPerInch);
+    onMove(
+      (e.clientX - rect.left) / pxPerInch,
+      (e.clientY - rect.top) / pxPerInch,
+    );
   };
 
   const onPointerUp = (e: ReactPointerEvent<HTMLElement>) => {
@@ -47,6 +56,11 @@ export function useWallItemDrag(
 
   return {
     dragging,
-    handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel: onPointerUp,
+    },
   };
 }

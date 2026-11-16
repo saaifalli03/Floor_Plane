@@ -9,7 +9,8 @@ export function useRoomLabel() {
   const { t } = useTranslation();
   return useCallback(
     (room: Pick<Room, "type" | "customName">) =>
-      (room.type === "custom" && room.customName) || t(`room_types.${room.type}`),
+      (room.type === "custom" && room.customName) ||
+      t(`room_types.${room.type}`),
     [t],
   );
 }
